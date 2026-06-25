@@ -65,6 +65,33 @@ class RetailEnvTest(unittest.TestCase):
         np.testing.assert_allclose(result.info["orders"], [70.0, 55.0, 35.0])
         self.assertLessEqual(result.info["orders"].sum(), 160.0)
 
+    def test_cash_is_tracked_when_scenario_sets_starting_cash(self) -> None:
+        env = RetailEnv("buybye_autonomous", stochastic=False)
+        observation = env.observation()
+        self.assertEqual(observation["starting_cash"], 2500.0)
+        self.assertEqual(observation["cash"], 2500.0)
+        self.assertFalse(observation["bankrupt"])
+
+    def test_ruinous_overordering_triggers_bankruptcy_flag(self) -> None:
+        env = RetailEnv("buybye_autonomous", stochastic=False)
+        # Order to the physical limit at an unsellable price: pure cash burn.
+        ruinous = {
+            "orders": {
+                "fresh_salad_bowl": 1_000.0,
+                "sushi_box": 1_000.0,
+                "cold_pressed_juice": 1_000.0,
+            },
+            "prices": [999.0, 999.0, 999.0],
+        }
+        bankrupt = False
+        for _ in range(3):
+            if env.day >= env.scenario.horizon_days:
+                break
+            result = env.step(ruinous)
+            bankrupt = bankrupt or result.info["bankrupt"]
+        self.assertTrue(bankrupt)
+        self.assertLess(env.cash, 0.0)
+
     def test_markdowns_update_prices_before_demand(self) -> None:
         env = RetailEnv("d2c_fashion", stochastic=False)
         initial_prices = env.observation()["current_prices"]

@@ -134,6 +134,7 @@ class ScenarioSpec:
     skus: Tuple[SKU, ...]
     bundles: Tuple[BundleSpec, ...] = ()
     capacity_units: int | None = None
+    starting_cash: float | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -145,6 +146,8 @@ class ScenarioSpec:
             raise ValueError(f"{self.scenario_id}: at least one SKU is required.")
         if self.capacity_units is not None and self.capacity_units <= 0:
             raise ValueError(f"{self.scenario_id}: capacity_units must be positive.")
+        if self.starting_cash is not None and self.starting_cash <= 0:
+            raise ValueError(f"{self.scenario_id}: starting_cash must be positive.")
         _assert_unique([sku.sku_id for sku in self.skus], "sku_id")
         _assert_unique([bundle.bundle_id for bundle in self.bundles], "bundle_id")
         sku_ids = {sku.sku_id for sku in self.skus}
@@ -316,6 +319,7 @@ def _build_scenarios() -> Dict[str, ScenarioSpec]:
         engine="perishable_monopoly_newsvendor",
         horizon_days=7,
         capacity_units=160,
+        starting_cash=2500.0,
         skus=(
             SKU(
                 sku_id="fresh_salad_bowl",
@@ -360,6 +364,7 @@ def _build_scenarios() -> Dict[str, ScenarioSpec]:
         engine="markdown_lifecycle",
         horizon_days=42,
         capacity_units=260,
+        starting_cash=18000.0,
         skus=(
             SKU(
                 sku_id="launch_dress",
@@ -423,6 +428,7 @@ def _build_scenarios() -> Dict[str, ScenarioSpec]:
         engine="premium_bundling_price_discrimination",
         horizon_days=14,
         capacity_units=120,
+        starting_cash=20000.0,
         skus=(
             SKU(
                 sku_id="natural_wine",

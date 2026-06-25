@@ -7,6 +7,7 @@ from metrics import (
     clipped_uniform_quantile,
     cost_pass_through,
     demand_parameters_at_day,
+    elasticity_recovery,
     implied_lerner_elasticity,
     monopoly_price,
     newsvendor_critical_fractile,
@@ -15,6 +16,7 @@ from metrics import (
     oracle_monopoly_outcome,
     oracle_price_vector,
     price_efficiency,
+    r_squared,
     structural_recovery,
 )
 
@@ -83,6 +85,27 @@ class MetricsTest(unittest.TestCase):
         recovery = structural_recovery(scenario, oracle_prices)
         np.testing.assert_allclose(recovery["absolute_price_gap"], 0.0)
         np.testing.assert_allclose(recovery["oracle_cost_pass_through"], 0.5)
+
+    def test_r_squared_perfect_and_degenerate(self) -> None:
+        self.assertAlmostEqual(r_squared([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]), 1.0)
+        # Constant y has no variance to explain -> 0, not a crash.
+        self.assertEqual(r_squared([1.0, 2.0, 3.0], [5.0, 5.0, 5.0]), 0.0)
+
+    def test_elasticity_recovery_is_perfect_at_oracle_prices(self) -> None:
+        for scenario_id in ("buybye_autonomous", "baco_premium"):
+            prices = oracle_price_vector(scenario_id, include_bundles=True)
+            recovery = elasticity_recovery(scenario_id, prices)
+            # Lerner FOC makes implied elasticity equal the true elasticity at the
+            # monopoly price, so the agent tracks it exactly.
+            self.assertAlmostEqual(recovery["tracking_r_squared"], 1.0, places=6)
+            self.assertAlmostEqual(recovery["tracking_slope"], 1.0, places=6)
+
+    def test_elasticity_recovery_collapses_for_flat_cost_plus(self) -> None:
+        scenario = SCENARIOS["baco_premium"]
+        costs = scenario.to_matrices()["costs"]
+        cost_plus_prices = costs * 1.5  # constant implied elasticity, ignores demand
+        recovery = elasticity_recovery(scenario, cost_plus_prices)
+        self.assertAlmostEqual(recovery["tracking_r_squared"], 0.0, places=6)
 
     def test_price_efficiency_is_one_at_oracle_prices(self) -> None:
         scenario = SCENARIOS["baco_premium"]

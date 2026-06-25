@@ -147,9 +147,6 @@ class LLMAgent:
         bundle_ids = tuple(str(item) for item in obs.get("bundle_ids", ()))
         costs = _numeric_array(obs, "costs", len(offer_ids))
         current_prices = _numeric_array(obs, "current_prices", len(offer_ids))
-        expected_demand = _numeric_array(obs, "expected_demand", len(offer_ids))
-        intercepts = _numeric_array(obs, "demand_intercepts", len(offer_ids))
-        slopes = _numeric_array(obs, "demand_slopes", len(offer_ids))
         inventory = _numeric_array(obs, "inventory", len(sku_ids))
         shelf_life = _numeric_array(obs, "shelf_life_days", len(sku_ids))
 
@@ -174,9 +171,7 @@ class LLMAgent:
                 "- "
                 f"{offer_id} | type={kind} | cost={_fmt(costs[idx])} | "
                 f"current_price={_fmt(current_prices[idx])} | inventory={stock_text} | "
-                f"shelf_life={life_text} | demand_a={_fmt(intercepts[idx])} | "
-                f"demand_b={_fmt(slopes[idx])} | expected_demand_at_current_price="
-                f"{_fmt(expected_demand[idx])}"
+                f"shelf_life={life_text}"
             )
 
         if bundle_ids:
@@ -202,6 +197,8 @@ class LLMAgent:
                 _json_contract(offer_ids, sku_ids),
                 "",
                 "Constraints:",
+                "- Latent demand (a, b) is hidden by design; infer willingness to "
+                "pay from costs, prices, inventory, and shelf life.",
                 "- precos: positive numeric price for every offer id.",
                 "- pedidos: non-negative numeric order quantity for every SKU id.",
                 "- markdowns: numeric discount in [0, 1) for every offer id.",

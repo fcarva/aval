@@ -1,0 +1,4 @@
+# Economic core. The simulation, metrics, scoring, and runner depend only on
+# numpy plus the Python standard library. The web layer adds the dependencies in
+# requirements-web.txt.
+numpy>=1.26,<3

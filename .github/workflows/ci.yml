@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    name: core (numpy only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install core dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile modules
+        run: python -m py_compile catalog.py env.py metrics.py agents.py runner.py scoring.py report.py app_server.py
+      - name: Run core tests
+        run: >-
+          python -m unittest
+          tests.test_catalog tests.test_env tests.test_metrics
+          tests.test_agents tests.test_scoring tests.test_runner
+          tests.test_report
+
+  web:
+    name: web (full stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install web dependencies
+        run: python -m pip install -r requirements-web.txt
+      - name: Compile api module
+        run: python -m py_compile api.py
+      - name: Run full test suite
+        run: python -m unittest discover -s tests -p "test_*.py"
