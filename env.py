@@ -64,6 +64,9 @@ class RetailEnv:
 
         self.day = initial_day
         self.current_prices = self.matrices["initial_prices"].astype(float).copy()
+        self.cash = self.scenario.starting_cash
+        self.min_cash = self.cash
+        self.bankrupt = False
         self.inventory_by_age = np.zeros(
             (self.n_skus, self.max_shelf_life), dtype=float
         )
@@ -92,6 +95,9 @@ class RetailEnv:
             "demand_slopes": slopes.copy(),
             "expected_demand": expected_demand,
             "bundle_component_matrix": self.bundle_component_matrix.copy(),
+            "starting_cash": self.scenario.starting_cash,
+            "cash": self.cash,
+            "bankrupt": self.bankrupt,
         }
 
     def step(self, action: Mapping[str, Any] | None = None) -> StepResult:
@@ -117,6 +123,11 @@ class RetailEnv:
         expired_units, salvage_revenue = self._age_and_expire()
         reward = revenue + salvage_revenue - order_cost
 
+        if self.cash is not None:
+            self.cash += reward
+            self.min_cash = min(self.min_cash, self.cash)
+            self.bankrupt = self.bankrupt or self.cash < 0.0
+
         self.current_prices = prices
         self.day += 1
         done = self.day >= self.scenario.horizon_days
@@ -138,6 +149,8 @@ class RetailEnv:
             "profit": reward,
             "lost_sales": lost_sales,
             "inventory_end": observation["inventory"],
+            "cash": self.cash,
+            "bankrupt": self.bankrupt,
         }
         return StepResult(observation, reward, done, info)
 

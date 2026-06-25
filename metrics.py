@@ -310,6 +310,95 @@ def structural_recovery(
     }
 
 
+def r_squared(x: Sequence[float] | np.ndarray, y: Sequence[float] | np.ndarray) -> float:
+    """Coefficient of determination for the OLS fit y ~ a + b x."""
+
+    x_array = np.asarray(x, dtype=float)
+    y_array = np.asarray(y, dtype=float)
+    finite = np.isfinite(x_array) & np.isfinite(y_array)
+    if finite.sum() < 2:
+        return 0.0
+    x_finite = x_array[finite]
+    y_finite = y_array[finite]
+    var_x = float(np.dot(x_finite - x_finite.mean(), x_finite - x_finite.mean()))
+    var_y = float(np.dot(y_finite - y_finite.mean(), y_finite - y_finite.mean()))
+    if var_x <= 0.0 or var_y <= 0.0:
+        return 0.0
+    covariance = float(
+        np.dot(x_finite - x_finite.mean(), y_finite - y_finite.mean())
+    )
+    return float(np.clip(covariance * covariance / (var_x * var_y), 0.0, 1.0))
+
+
+def elasticity_recovery(
+    scenario: ScenarioSpec | str,
+    prices: Sequence[float] | np.ndarray,
+    day: int = 0,
+    include_bundles: bool = True,
+) -> dict[str, Any]:
+    """Recover whether the agent's revealed elasticity tracks the true elasticity.
+
+    The Lerner condition makes a rational monopolist's *implied* elasticity
+    -p / (p - c) coincide with the *true* demand elasticity -b p / (a - b p) at
+    its chosen price. Regressing implied on true across offers gives a slope and
+    an R^2: a rational agent lands on slope ~ 1, R^2 ~ 1; a cost-plus agent holds
+    a constant implied elasticity regardless of the truth, so its R^2 collapses.
+    This is identified from a single price vector, unlike the cross-sectional
+    cost pass-through, which conflates the per-product derivative with demand
+    heterogeneity.
+    """
+
+    scenario_spec = get_scenario(scenario)
+    matrices = scenario_spec.to_matrices(include_bundles=include_bundles)
+    prices_array = np.asarray(prices, dtype=float)
+    if prices_array.shape != matrices["costs"].shape:
+        raise ValueError(
+            f"Expected {matrices['costs'].size} prices, received {prices_array.size}."
+        )
+    intercepts, slopes = demand_parameters_at_day(
+        scenario_spec, day=day, include_bundles=include_bundles
+    )
+    implied = implied_lerner_elasticity(prices_array, matrices["costs"])
+    true = linear_demand_elasticity(intercepts, slopes, prices_array)
+    finite = np.isfinite(implied) & np.isfinite(true)
+    # When fewer than two offers are identifiable (e.g. demand has decayed below
+    # cost so the optimal quantity is ~0, or the agent priced below cost so the
+    # Lerner elasticity is undefined) there is no elasticity signal to score.
+    # Return NaN so the step is excluded from the mean rather than scored 0.
+    fit_r2 = r_squared(true, implied) if finite.sum() >= 2 else float("nan")
+    if finite.sum() >= 2:
+        true_finite = true[finite]
+        implied_finite = implied[finite]
+        var_true = float(
+            np.dot(true_finite - true_finite.mean(), true_finite - true_finite.mean())
+        )
+        slope = (
+            float(
+                np.dot(
+                    true_finite - true_finite.mean(),
+                    implied_finite - implied_finite.mean(),
+                )
+                / var_true
+            )
+            if var_true > 0.0
+            else float("nan")
+        )
+        gap = float(np.nanmean(np.abs(implied_finite - true_finite)))
+    else:
+        slope = float("nan")
+        gap = float("nan")
+    return {
+        "scenario_id": scenario_spec.scenario_id,
+        "day": day,
+        "implied_elasticity": implied,
+        "true_elasticity": true,
+        "tracking_slope": slope,
+        "tracking_r_squared": fit_r2,
+        "mean_abs_elasticity_gap": gap,
+        "n_identified": int(finite.sum()),
+    }
+
+
 def price_efficiency(
     scenario: ScenarioSpec | str,
     prices: Sequence[float] | np.ndarray,

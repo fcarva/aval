@@ -39,25 +39,30 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f6f7f9;
-      --ink: #1f2933;
-      --muted: #627083;
-      --line: #d9dee7;
-      --panel: #ffffff;
-      --good: #0f766e;
-      --bad: #b42318;
-      --warn: #9a6700;
-      --accent: #244c88;
+      --bg: #fffcf0;
+      --bg-subtle: #f2f0e5;
+      --ink: #100f0f;
+      --muted: #6f6e69;
+      --line: #dad8ce;
+      --panel: #fffcf0;
+      --panel-strong: #f9f6ea;
+      --good: #66800b;
+      --bad: #af3029;
+      --warn: #ad8301;
+      --accent: #205ea6;
     }}
     body {{
       margin: 0;
-      background: var(--bg);
+      background:
+        linear-gradient(180deg, var(--bg-subtle) 0, var(--bg) 260px),
+        var(--bg);
       color: var(--ink);
-      font: 14px/1.45 Arial, Helvetica, sans-serif;
+      font: 14px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      letter-spacing: 0;
     }}
     header {{
-      background: #172033;
-      color: white;
+      background: #100f0f;
+      color: #fffcf0;
       padding: 28px 32px;
     }}
     main {{
@@ -83,7 +88,7 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
     }}
     .subtitle {{
       margin-top: 8px;
-      color: #cbd5e1;
+      color: #cecdc3;
     }}
     .grid {{
       display: grid;
@@ -95,6 +100,7 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 14px;
+      box-shadow: 0 1px 0 rgba(16, 15, 15, 0.04), 0 12px 28px rgba(16, 15, 15, 0.06);
     }}
     .metric-label, .muted {{
       color: var(--muted);
@@ -120,8 +126,8 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
       vertical-align: top;
     }}
     th {{
-      background: #eef2f7;
-      color: #364152;
+      background: var(--panel-strong);
+      color: var(--muted);
       font-size: 12px;
       text-transform: uppercase;
     }}
@@ -137,17 +143,45 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
       white-space: nowrap;
     }}
     .pass {{
-      background: #d7f3ee;
+      background: #ecf2d6;
       color: var(--good);
     }}
     .fail {{
-      background: #fee4e2;
+      background: #f6e3df;
       color: var(--bad);
     }}
     .unknown {{
-      background: #fff2cc;
+      background: #f7edcf;
       color: var(--warn);
     }}
+    .certificate {{
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }}
+    .cert-grade {{
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      padding: 10px 18px;
+      border-radius: 12px;
+      background: #1c1b1a;
+      border: 1px solid #3a3936;
+    }}
+    .cert-verdict {{
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }}
+    .v-aprovado {{ background: #ecf2d6; color: var(--good); }}
+    .v-ressalva {{ background: #f7edcf; color: var(--warn); }}
+    .v-reprovado {{ background: #f6e3df; color: var(--bad); }}
+    .cert-score {{ font-size: 15px; color: #cecdc3; }}
     .scenario p {{
       margin: 6px 0 0;
     }}
@@ -157,8 +191,8 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
     pre {{
       max-height: 320px;
       overflow: auto;
-      background: #111827;
-      color: #e5e7eb;
+      background: #100f0f;
+      color: #cecdc3;
       padding: 12px;
       border-radius: 8px;
       font-size: 12px;
@@ -169,11 +203,15 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
   <header>
     <h1>AVAL Parecer</h1>
     <div class="subtitle">Agent Evaluation - distancia para o otimo teorico e recuperacao estrutural. Gerado em {generated_at}.</div>
+    {_certificate_hero(summary)}
   </header>
   <main>
     <section class="grid" aria-label="Resumo executivo">
-      {_metric_card("Episodios", summary.get("episodes", len(episodes)))}
+      {_metric_card("AVAL Score", _fmt_num(summary.get("mean_aval_score")))}
+      {_metric_card("Grade", summary.get("grade", "n/a"))}
+      {_metric_card("Taxa de sobrevivencia", _fmt_pct(summary.get("survival_rate")))}
       {_metric_card("Eficiencia media de preco", _fmt_pct(summary.get("mean_price_efficiency")))}
+      {_metric_card("Recuperacao estrutural (R2)", _fmt_num(summary.get("mean_structural_r_squared")))}
       {_metric_card("Gap medio de preco", _fmt_pct(summary.get("mean_abs_relative_price_gap")))}
       {_metric_card("Gap medio de pedido", _fmt_num(summary.get("mean_abs_order_gap")))}
       {_metric_card("Lucro simulado", _fmt_money(summary.get("total_profit")))}
@@ -190,6 +228,8 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
         <tr>
           <th>Cen&aacute;rio</th>
           <th>Epis&oacute;dios</th>
+          <th>AVAL Score</th>
+          <th>Sobreviv&ecirc;ncia</th>
           <th>Efici&ecirc;ncia de pre&ccedil;o</th>
           <th>Gap de pre&ccedil;o</th>
           <th>Gap de pedido</th>
@@ -209,6 +249,8 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
           <th>Seed</th>
           <th>Cen&aacute;rio</th>
           <th>Dias</th>
+          <th>Score</th>
+          <th>Grade</th>
           <th>Efici&ecirc;ncia</th>
           <th>Gap pre&ccedil;o</th>
           <th>Gap pedido</th>
@@ -229,6 +271,31 @@ def render_html_report(batch: Mapping[str, Any]) -> str:
 </body>
 </html>
 """
+
+
+def _certificate_hero(summary: Mapping[str, Any]) -> str:
+    score = summary.get("mean_aval_score")
+    grade = summary.get("grade")
+    verdict = str(summary.get("verdict", "")).upper()
+    if score is None and not grade:
+        return ""
+    verdict_class = {
+        "APROVADO": "v-aprovado",
+        "RESSALVA": "v-ressalva",
+        "REPROVADO": "v-reprovado",
+    }.get(verdict, "v-ressalva")
+    verdict_html = (
+        f'<span class="cert-verdict {verdict_class}">{escape(verdict)}</span>'
+        if verdict
+        else ""
+    )
+    return (
+        '<div class="certificate">'
+        f'<span class="cert-grade">{escape(str(grade or "?"))}</span>'
+        f"{verdict_html}"
+        f'<span class="cert-score">AVAL Score {escape(_fmt_num(score))} / 100</span>'
+        "</div>"
+    )
 
 
 def _metric_card(label: str, value: Any) -> str:
@@ -268,7 +335,7 @@ def _render_structural_diagnostics(episodes: Sequence[Mapping[str, Any]]) -> str
 
 def _render_scenario_cards(scenarios: Mapping[str, Mapping[str, Any]]) -> str:
     if not scenarios:
-        return '<tr><td colspan="7">Sem cenarios avaliados.</td></tr>'
+        return '<tr><td colspan="9">Sem cenarios avaliados.</td></tr>'
     rows: list[str] = []
     for scenario_id, summary in sorted(scenarios.items()):
         diagnostics = summary.get("diagnostics", [])
@@ -285,6 +352,8 @@ def _render_scenario_cards(scenarios: Mapping[str, Mapping[str, Any]]) -> str:
             "<tr>"
             f"<td>{escape(_scenario_name(scenario_id))}</td>"
             f"<td>{escape(str(summary.get('episodes', 0)))}</td>"
+            f"<td>{escape(_fmt_num(summary.get('mean_aval_score')))}</td>"
+            f"<td>{escape(_fmt_pct(summary.get('survival_rate')))}</td>"
             f"<td>{escape(_fmt_pct(summary.get('mean_price_efficiency')))}</td>"
             f"<td>{escape(_fmt_pct(summary.get('mean_abs_relative_price_gap')))}</td>"
             f"<td>{escape(_fmt_num(summary.get('mean_abs_order_gap')))}</td>"
@@ -297,7 +366,7 @@ def _render_scenario_cards(scenarios: Mapping[str, Mapping[str, Any]]) -> str:
 
 def _render_episode_rows(episodes: Sequence[Mapping[str, Any]]) -> str:
     if not episodes:
-        return '<tr><td colspan="8">Sem episodios avaliados.</td></tr>'
+        return '<tr><td colspan="10">Sem episodios avaliados.</td></tr>'
     rows: list[str] = []
     for episode in episodes:
         summary = episode.get("summary", {})
@@ -307,6 +376,8 @@ def _render_episode_rows(episodes: Sequence[Mapping[str, Any]]) -> str:
             f"<td>{escape(str(episode.get('seed', '')))}</td>"
             f"<td>{escape(_scenario_name(str(episode.get('scenario_id', ''))))}</td>"
             f"<td>{escape(str(summary.get('days_run', '')))}</td>"
+            f"<td>{escape(_fmt_num(summary.get('aval_score')))}</td>"
+            f"<td>{escape(str(summary.get('grade', 'n/a')))}</td>"
             f"<td>{escape(_fmt_pct(summary.get('mean_price_efficiency')))}</td>"
             f"<td>{escape(_fmt_pct(summary.get('mean_abs_relative_price_gap')))}</td>"
             f"<td>{escape(_fmt_num(summary.get('mean_abs_order_gap')))}</td>"
@@ -384,4 +455,3 @@ def _json_safe(value: Any) -> Any:
             return None
         return value
     return value
-

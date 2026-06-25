@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVAL MVP</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="header-content">
+      <div>
+        <h1>AVAL</h1>
+        <p>Agent Evaluation - Distancia para o Otimo Teorico</p>
+      </div>
+      <span class="header-badge">MVP</span>
+    </div>
+    <a id="reportLink" class="report-link" href="/aval_parecer.html" target="_blank" rel="noreferrer">Abrir parecer</a>
+  </header>
+
+  <main class="layout">
+    <aside class="control-panel">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Painel de Controle</h2>
+          <span class="panel-kicker">simulacao</span>
+        </div>
+        <label>
+          Agente
+          <select id="agentSelect">
+            <option value="naive">Demo: agente ingenuo</option>
+            <option value="oracle">OracleAgent (otimo teorico)</option>
+            <option value="fixed_markup">FixedMarkup (cost-plus)</option>
+            <option value="random">Random (volatil)</option>
+            <option value="heuristic_llm">LLM heuristico (contrato JSON)</option>
+            <option value="manual">Agente manual</option>
+          </select>
+        </label>
+
+        <fieldset>
+          <legend>Cenarios</legend>
+          <div id="scenarioChecks" class="check-list"></div>
+        </fieldset>
+
+        <label>
+          Seeds
+          <input id="seedInput" type="text" value="101,202,303" spellcheck="false">
+        </label>
+
+        <label class="switch-row">
+          <input id="stochasticInput" type="checkbox" checked>
+          <span>Demanda estocastica</span>
+        </label>
+
+        <div class="button-row">
+          <button id="runButton" type="button">Rodar avaliacao</button>
+          <button id="reportButton" type="button" class="secondary">Gerar parecer</button>
+        </div>
+        <p id="statusText" class="status">Carregando catalogo...</p>
+      </section>
+
+      <section id="manualPanel" class="panel hidden">
+        <div class="panel-head">
+          <h2>Acao manual</h2>
+          <span class="panel-kicker">override</span>
+        </div>
+        <label>
+          Cenario manual
+          <select id="manualScenarioSelect"></select>
+        </label>
+        <div id="manualEditor" class="manual-editor"></div>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <section class="kpi-grid" aria-label="Indicadores">
+        <article class="kpi">
+          <span>AVAL Score</span>
+          <strong id="kpiScore">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Veredito</span>
+          <strong id="kpiVerdict">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Sobrevivencia</span>
+          <strong id="kpiSurvival">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Eficiencia media</span>
+          <strong id="kpiEfficiency">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Gap preco</span>
+          <strong id="kpiPriceGap">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Gap pedido</span>
+          <strong id="kpiOrderGap">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Lucro simulado</span>
+          <strong id="kpiProfit">-</strong>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Diagnostico estrutural</h2>
+          <span id="batchMeta" class="muted">Sem avaliacao rodada</span>
+        </div>
+        <div id="diagnosticGrid" class="diagnostic-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Resumo por episodio</h2>
+          <select id="episodeSelect" aria-label="Selecionar episodio"></select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Seed</th>
+                <th>Cenario</th>
+                <th>Dias</th>
+                <th>Score</th>
+                <th>Grade</th>
+                <th>Eficiencia</th>
+                <th>Gap preco</th>
+                <th>Gap pedido</th>
+                <th>Lucro</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="episodeRows">
+              <tr><td colspan="10">Rode uma avaliacao para preencher a tabela.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Agente vs Oracle por dia</h2>
+          <span id="stepMeta" class="muted">Selecione um episodio</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Oferta</th>
+                <th>Preco agente</th>
+                <th>Preco Oracle</th>
+                <th>Gap relativo</th>
+                <th>Pedido agente</th>
+                <th>Q* Oracle</th>
+                <th>Lost sales</th>
+                <th>Expirado</th>
+                <th>Bundle sales</th>
+              </tr>
+            </thead>
+            <tbody id="stepRows">
+              <tr><td colspan="10">Sem dados.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -10,7 +10,13 @@ import numpy as np
 
 from catalog import SCENARIOS, ScenarioSpec, get_scenario
 from env import RetailEnv
-from metrics import oracle_policy, price_efficiency, structural_recovery
+from metrics import (
+    elasticity_recovery,
+    oracle_policy,
+    price_efficiency,
+    structural_recovery,
+)
+from scoring import aggregate_certificate, aval_certificate
 
 
 class AgentLike(Protocol):
@@ -50,6 +56,115 @@ class OracleAgent:
                 sku_id: float(order)
                 for sku_id, order in zip(sku_ids, orders)
             },
+            "markdowns": {offer_id: 0.0 for offer_id in offer_ids},
+        }
+
+
+@dataclass(frozen=True)
+class NaiveAgent:
+    """Intentionally weak retail policy used to demonstrate AVAL diagnostics."""
+
+    order_multiplier: float = 1.60
+    bundle_price_multiplier: float = 1.35
+
+    def act(self, obs: Mapping[str, Any]) -> dict[str, dict[str, float]]:
+        offer_ids = tuple(str(item) for item in obs["offer_ids"])
+        sku_ids = tuple(str(item) for item in obs["sku_ids"])
+        bundle_ids = set(str(item) for item in obs.get("bundle_ids", ()))
+        prices = np.asarray(obs["current_prices"], dtype=float)
+        costs = np.asarray(obs["costs"], dtype=float)
+        expected_demand = np.asarray(obs["expected_demand"], dtype=float)
+
+        price_action = {
+            offer_id: float(
+                costs[idx] * self.bundle_price_multiplier
+                if offer_id in bundle_ids
+                else prices[idx]
+            )
+            for idx, offer_id in enumerate(offer_ids)
+        }
+        orders = {
+            sku_id: float(max(0.0, expected_demand[idx] * self.order_multiplier))
+            for idx, sku_id in enumerate(sku_ids)
+        }
+        return {
+            "prices": price_action,
+            "orders": orders,
+            "markdowns": {offer_id: 0.0 for offer_id in offer_ids},
+        }
+
+
+@dataclass(frozen=True)
+class FixedMarkupAgent:
+    """Naive human baseline: fixed cost-plus markup, demand-anchored restock.
+
+    Reproduces the doc's FixedMarkup archetype. Pricing ignores elasticity (so it
+    leaves money on the table and its implied elasticity is flat), but ordering
+    tracks expected demand closely enough to survive.
+    """
+
+    markup: float = 0.50
+    restock_buffer: float = 1.10
+
+    def act(self, obs: Mapping[str, Any]) -> dict[str, dict[str, float]]:
+        offer_ids = tuple(str(item) for item in obs["offer_ids"])
+        sku_ids = tuple(str(item) for item in obs["sku_ids"])
+        costs = np.asarray(obs["costs"], dtype=float)
+        inventory = np.asarray(obs["inventory"], dtype=float)
+        expected_demand = np.asarray(obs["expected_demand"], dtype=float)
+        prices = {
+            offer_id: float(max(0.01, costs[idx] * (1.0 + self.markup)))
+            for idx, offer_id in enumerate(offer_ids)
+        }
+        orders = {
+            sku_id: float(
+                max(0.0, expected_demand[idx] * self.restock_buffer - inventory[idx])
+            )
+            for idx, sku_id in enumerate(sku_ids)
+        }
+        return {
+            "prices": prices,
+            "orders": orders,
+            "markdowns": {offer_id: 0.0 for offer_id in offer_ids},
+        }
+
+
+class RandomAgent:
+    """Erratic baseline: random multipliers on cost, random restock.
+
+    Demonstrates that volatility is fatal. Some prices land below cost (a
+    dominated action), pricing is incoherent across days, and over-ordering can
+    drive the account negative, so survival is well below 100%.
+    """
+
+    def __init__(
+        self,
+        seed: int = 0,
+        price_low: float = 0.6,
+        price_high: float = 3.5,
+        order_high: float = 30.0,
+    ) -> None:
+        self.rng = np.random.default_rng(seed)
+        self.price_low = float(price_low)
+        self.price_high = float(price_high)
+        self.order_high = float(order_high)
+
+    def act(self, obs: Mapping[str, Any]) -> dict[str, dict[str, float]]:
+        offer_ids = tuple(str(item) for item in obs["offer_ids"])
+        sku_ids = tuple(str(item) for item in obs["sku_ids"])
+        costs = np.asarray(obs["costs"], dtype=float)
+        prices = {
+            offer_id: float(
+                max(0.01, costs[idx] * self.rng.uniform(self.price_low, self.price_high))
+            )
+            for idx, offer_id in enumerate(offer_ids)
+        }
+        orders = {
+            sku_id: float(self.rng.uniform(0.0, self.order_high)) for sku_id in sku_ids
+        }
+        return {
+            "prices": prices,
+            "orders": orders,
             "markdowns": {offer_id: 0.0 for offer_id in offer_ids},
         }
 
@@ -178,6 +293,11 @@ def summarize_episode(
     mean_late_markdown = _late_markdown_mean(scenario_spec, records)
     mean_late_relative_price_gap = _late_price_gap_mean(scenario_spec, records)
     mean_bundle_relative_price_gap = _bundle_price_gap_mean(scenario_spec, records)
+    mean_structural_r_squared = _mean(records, "structural_r_squared")
+    mean_order_accuracy = _order_accuracy(records)
+    survived, min_cash = _survival(records)
+    flag_rate, below_cost_total, over_capacity_total = _flag_rate(records)
+    price_incoherence = _price_incoherence(scenario_spec, records)
 
     summary = {
         "scenario_id": scenario_spec.scenario_id,
@@ -194,11 +314,23 @@ def summarize_episode(
         "mean_price_efficiency": mean_price_efficiency,
         "mean_abs_relative_price_gap": mean_abs_relative_price_gap,
         "mean_abs_order_gap": mean_abs_order_gap,
+        "mean_order_accuracy": mean_order_accuracy,
+        "mean_structural_r_squared": mean_structural_r_squared,
         "mean_late_markdown": mean_late_markdown,
         "mean_late_relative_price_gap": mean_late_relative_price_gap,
         "mean_bundle_relative_price_gap": mean_bundle_relative_price_gap,
+        "survived": survived,
+        "min_cash": min_cash,
+        "flag_rate": flag_rate,
+        "below_cost_actions": below_cost_total,
+        "over_capacity_actions": over_capacity_total,
+        "price_incoherence": price_incoherence,
     }
     summary["diagnostic"] = build_structural_diagnostic(summary)
+    summary["certificate"] = aval_certificate(summary)
+    summary["aval_score"] = summary["certificate"]["aval_score"]
+    summary["grade"] = summary["certificate"]["grade"]
+    summary["verdict"] = summary["certificate"]["verdict"]
     return summary
 
 
@@ -219,11 +351,15 @@ def summarize_batch(episodes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 summaries, "mean_abs_relative_price_gap"
             ),
             "mean_abs_order_gap": _mean(summaries, "mean_abs_order_gap"),
+            "mean_aval_score": _mean(summaries, "aval_score"),
+            "survival_rate": _survival_rate(summaries),
             "total_profit": _sum(summaries, "total_profit"),
             "diagnostics": [summary["diagnostic"] for summary in summaries],
         }
 
     all_summaries = [episode["summary"] for episode in episodes]
+    scores = [float(summary.get("aval_score", 0.0)) for summary in all_summaries]
+    certificate = aggregate_certificate(scores)
     return {
         "episodes": len(episodes),
         "scenarios": by_scenario,
@@ -232,6 +368,11 @@ def summarize_batch(episodes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             all_summaries, "mean_abs_relative_price_gap"
         ),
         "mean_abs_order_gap": _mean(all_summaries, "mean_abs_order_gap"),
+        "mean_structural_r_squared": _mean(all_summaries, "mean_structural_r_squared"),
+        "mean_aval_score": certificate["aval_score"],
+        "grade": certificate["grade"],
+        "verdict": certificate["verdict"],
+        "survival_rate": _survival_rate(all_summaries),
         "total_profit": _sum(all_summaries, "total_profit"),
     }
 
@@ -239,9 +380,10 @@ def summarize_batch(episodes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 def build_structural_diagnostic(summary: Mapping[str, Any]) -> dict[str, Any]:
     scenario_id = str(summary["scenario_id"])
     if scenario_id == "buybye_autonomous":
+        n_skus = len(get_scenario(scenario_id).skus)
         expired = float(sum(summary.get("total_expired_units", [])))
         orders = float(sum(summary.get("total_orders", [])))
-        lost = float(sum(summary.get("total_lost_sales", [])[:3]))
+        lost = float(sum(summary.get("total_lost_sales", [])[:n_skus]))
         expired_rate = expired / orders if orders > 0.0 else 0.0
         lost_rate = lost / (lost + orders) if lost + orders > 0.0 else 0.0
         failed = expired_rate > 0.15 or lost_rate > 0.15
@@ -267,7 +409,10 @@ def build_structural_diagnostic(summary: Mapping[str, Any]) -> dict[str, Any]:
         final_inventory = float(sum(summary.get("final_inventory", [])))
         late_markdown = float(summary.get("mean_late_markdown", 0.0))
         late_price_gap = float(summary.get("mean_late_relative_price_gap", 0.0))
-        failed = final_inventory > 0.0 and (late_markdown < 0.10 or late_price_gap > 0.10)
+        # Outcome-based: leftover clearance stock while the effective price stayed
+        # well above the oracle. Repricing and markdowns are both valid levers, so
+        # we judge the price gap, not whether a specific lever was used.
+        failed = final_inventory > 1.0 and late_price_gap > 0.10
         message = (
             "Falha principal: liquidar moda no ciclo D2C; markdowns e precos "
             "ficaram lentos frente a queda do hype."
@@ -326,14 +471,19 @@ def _build_step_record(
 ) -> dict[str, Any]:
     prices = np.asarray(info["prices"], dtype=float)
     orders = np.asarray(info["orders"], dtype=float)
+    orders_requested = np.asarray(info["orders_requested"], dtype=float)
+    costs = np.asarray(obs["costs"], dtype=float)
     efficiency = price_efficiency(scenario_spec, prices, day=day)
     recovery = structural_recovery(scenario_spec, prices, day=day)
+    elasticity = elasticity_recovery(scenario_spec, prices, day=day)
     policy = oracle_policy(scenario_spec, day=day)
     oracle_orders = np.asarray(policy["orders"], dtype=float)
     markdowns = _action_markdowns(action, obs)
 
     relative_gap = np.asarray(recovery["relative_price_gap"], dtype=float)
     order_gap = orders - oracle_orders
+    below_cost_count = int(np.sum(prices < costs - 1e-9))
+    over_capacity_count = int(np.sum(orders_requested > orders + 1e-6))
     return {
         "scenario_id": scenario_spec.scenario_id,
         "seed": int(seed),
@@ -352,6 +502,16 @@ def _build_step_record(
         "mean_abs_order_gap": _nanmean_abs(order_gap),
         "price_efficiency": float(efficiency["efficiency_ratio"]),
         "cost_pass_through": float(recovery["cost_pass_through"]),
+        "structural_r_squared": float(elasticity["tracking_r_squared"]),
+        "elasticity_tracking_slope": float(elasticity["tracking_slope"]),
+        "below_cost_count": below_cost_count,
+        "over_capacity_count": over_capacity_count,
+        "abs_order_gap_sum": float(np.nansum(np.abs(order_gap))),
+        "oracle_orders_sum": float(np.nansum(np.abs(oracle_orders))),
+        "n_offers": len(obs["offer_ids"]),
+        "n_skus": len(obs["sku_ids"]),
+        "cash": (None if info.get("cash") is None else float(info["cash"])),
+        "bankrupt": bool(info.get("bankrupt", False)),
         "profit": float(info["profit"]),
         "revenue": float(info["revenue"]),
         "order_cost": float(info["order_cost"]),
@@ -430,6 +590,72 @@ def _bundle_price_gap_mean(
     return float(np.nanmean(gaps))
 
 
+def _survival_rate(summaries: Sequence[Mapping[str, Any]]) -> float:
+    if not summaries:
+        return 0.0
+    survived = sum(1 for summary in summaries if summary.get("survived", True))
+    return float(survived / len(summaries))
+
+
+def _order_accuracy(records: Sequence[Mapping[str, Any]]) -> float:
+    """Fraction of the Newsvendor order policy the agent reproduces, in [0, 1]."""
+    gap = float(np.nansum([float(record.get("abs_order_gap_sum", 0.0)) for record in records]))
+    scale = float(np.nansum([float(record.get("oracle_orders_sum", 0.0)) for record in records]))
+    if scale <= 0.0:
+        return 1.0 if gap <= 0.0 else 0.0
+    return float(np.clip(1.0 - gap / scale, 0.0, 1.0))
+
+
+def _survival(records: Sequence[Mapping[str, Any]]) -> tuple[bool, float | None]:
+    cash_values = [record.get("cash") for record in records if record.get("cash") is not None]
+    survived = not any(bool(record.get("bankrupt", False)) for record in records)
+    min_cash = float(min(cash_values)) if cash_values else None
+    return survived, min_cash
+
+
+def _flag_rate(records: Sequence[Mapping[str, Any]]) -> tuple[float, int, int]:
+    """Rationality-flag rate over all decision slots, plus raw flag counts."""
+    below_cost = sum(int(record.get("below_cost_count", 0)) for record in records)
+    over_capacity = sum(int(record.get("over_capacity_count", 0)) for record in records)
+    slots = sum(
+        int(record.get("n_offers", 0)) + int(record.get("n_skus", 0)) for record in records
+    )
+    if slots <= 0:
+        return 0.0, below_cost, over_capacity
+    return float(np.clip((below_cost + over_capacity) / slots, 0.0, 1.0)), below_cost, over_capacity
+
+
+def _price_incoherence(
+    scenario: ScenarioSpec, records: Sequence[Mapping[str, Any]]
+) -> float:
+    """Coefficient of variation of each SKU price across days, for stationary demand.
+
+    Under stationary fundamentals the rational monopoly price is constant, so a
+    high coefficient of variation reveals revealed-preference incoherence (a
+    practical GARP proxy). Non-stationary scenarios (hype decay or slope growth)
+    are exempt because the optimal price is supposed to move.
+    """
+    stationary = all(
+        sku.demand.hype_decay == 0.0 and sku.demand.slope_growth_per_day == 0.0
+        for sku in scenario.skus
+    )
+    if not stationary or len(records) < 2:
+        return 0.0
+    n_skus = len(scenario.skus)
+    price_matrix = np.array(
+        [np.asarray(record.get("prices", []), dtype=float)[:n_skus] for record in records],
+        dtype=float,
+    )
+    if price_matrix.size == 0:
+        return 0.0
+    means = price_matrix.mean(axis=0)
+    stds = price_matrix.std(axis=0)
+    valid = means > 0.0
+    if not np.any(valid):
+        return 0.0
+    return float(np.clip(np.mean(stds[valid] / means[valid]), 0.0, 1.0))
+
+
 def _sum(records: Sequence[Mapping[str, Any]], key: str) -> float:
     values = [float(record.get(key, 0.0)) for record in records]
     return float(np.nansum(values))
@@ -479,10 +705,10 @@ def _float_list(values: Any) -> list[float]:
 
 if __name__ == "__main__":
     batch = run_multi_seed(
-        agent=OracleAgent(),
-        seeds=[101, 202, 303, 404, 505, 606],
+        agent=NaiveAgent(),
+        seeds=[101, 202, 303],
         stochastic=True,
-        scenario_rng_seed=42,
+        scenario_rng_seed=0,
         report_path="aval_parecer.html",
     )
     print(f"Wrote {batch['report_path']} with {len(batch['episodes'])} episodes.")

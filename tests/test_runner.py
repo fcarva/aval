@@ -1,12 +1,28 @@
 import unittest
 
 from runner import (
+    FixedMarkupAgent,
+    NaiveAgent,
     OracleAgent,
+    RandomAgent,
     build_structural_diagnostic,
     run_episode,
     run_multi_seed,
     sample_scenarios_for_seeds,
 )
+
+
+class _RuinousAgent:
+    """Prices everything at the floor and orders to the limit: guaranteed loss."""
+
+    def act(self, obs):
+        offer_ids = [str(item) for item in obs["offer_ids"]]
+        sku_ids = [str(item) for item in obs["sku_ids"]]
+        return {
+            "prices": {offer_id: 0.01 for offer_id in offer_ids},
+            "orders": {sku_id: 1_000.0 for sku_id in sku_ids},
+            "markdowns": {offer_id: 0.0 for offer_id in offer_ids},
+        }
 
 
 class RunnerTest(unittest.TestCase):
@@ -52,6 +68,61 @@ class RunnerTest(unittest.TestCase):
         )
         self.assertAlmostEqual(batch["summary"]["mean_price_efficiency"], 1.0)
 
+    def test_naive_agent_demo_exposes_all_structural_failures(self) -> None:
+        batch = run_multi_seed(
+            agent=NaiveAgent(),
+            seeds=[101, 202, 303],
+            scenario_ids=["buybye_autonomous", "d2c_fashion", "baco_premium"],
+            stochastic=False,
+            scenario_rng_seed=0,
+        )
+
+        failures = {
+            episode["scenario_id"]: episode["summary"]["diagnostic"]["failure_mode"]
+            for episode in batch["episodes"]
+        }
+        self.assertLess(batch["summary"]["mean_price_efficiency"], 0.90)
+        self.assertEqual(
+            failures,
+            {
+                "buybye_autonomous": "gerir estoque",
+                "d2c_fashion": "liquidar moda",
+                "baco_premium": "precificar pacotes",
+            },
+        )
+
+    def test_episode_summary_carries_certificate(self) -> None:
+        episode = run_episode(OracleAgent(), "baco_premium", seed=5, stochastic=False)
+        summary = episode["summary"]
+        for key in ("aval_score", "grade", "verdict", "certificate", "survived"):
+            self.assertIn(key, summary)
+        self.assertGreaterEqual(summary["aval_score"], 0.0)
+        self.assertLessEqual(summary["aval_score"], 100.0)
+
+    def test_baseline_agents_produce_valid_runnable_actions(self) -> None:
+        for agent in (FixedMarkupAgent(), RandomAgent(seed=1)):
+            episode = run_episode(agent, "buybye_autonomous", seed=3, stochastic=False)
+            self.assertEqual(len(episode["steps"]), 7)
+            self.assertIn("aval_score", episode["summary"])
+
+    def test_aval_score_ranks_oracle_above_naive(self) -> None:
+        seeds = [1, 2, 3, 4, 5, 6]
+        ids = ["buybye_autonomous", "d2c_fashion", "baco_premium"]
+        oracle = run_multi_seed(OracleAgent(), seeds, scenario_ids=ids, stochastic=True)
+        naive = run_multi_seed(NaiveAgent(), seeds, scenario_ids=ids, stochastic=True)
+        self.assertGreater(
+            oracle["summary"]["mean_aval_score"], naive["summary"]["mean_aval_score"]
+        )
+        self.assertEqual(oracle["summary"]["verdict"], "APROVADO")
+
+    def test_ruinous_agent_fails_survival(self) -> None:
+        episode = run_episode(_RuinousAgent(), "buybye_autonomous", seed=1, stochastic=False)
+        summary = episode["summary"]
+        self.assertFalse(summary["survived"])
+        # survival 0 -> coherence drops to the incoherence component only.
+        self.assertAlmostEqual(summary["certificate"]["layers"]["coherence"], 0.4)
+        self.assertLess(summary["aval_score"], 60.0)
+
     def test_diagnostics_identify_buybye_inventory_failure(self) -> None:
         diagnostic = build_structural_diagnostic(
             {
@@ -94,4 +165,3 @@ class RunnerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
