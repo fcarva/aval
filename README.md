@@ -35,9 +35,9 @@ only one prices and stocks near the optimum. Baseline scores are illustrative.
 
 ## MVP Scenarios
 
-- BuyBye autonomous retail: perishable monopoly with Newsvendor inventory.
-- WearClio / Disturb D2C fashion: short lifecycle with hype decay and markdowns.
-- Seja Baco premium beverages: premium curation with bundle pricing.
+- Autonomous retail: perishable monopoly with Newsvendor inventory.
+- D2C fashion: short lifecycle with hype decay and markdowns.
+- Premium beverages: premium curation with bundle pricing.
 
 ## Quick Start
 
