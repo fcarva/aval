@@ -39,19 +39,6 @@ only one prices and stocks near the optimum. Baseline scores are illustrative.
 - D2C fashion: short lifecycle with hype decay and markdowns.
 - Premium beverages: premium curation with bundle pricing.
 
-## Quick Start
-
-```powershell
-python -m pip install -r requirements-web.txt
-python -m unittest discover -s tests -p "test_*.py"
-python app_server.py
-```
-
-Open http://127.0.0.1:8000.
-
-The default demo agent is intentionally naive. It should fail at least one
-structural diagnostic, so the first run shows why AVAL exists. Switch to
-`OracleAgent` to see the theoretical benchmark.
 
 ## What To Look For
 
