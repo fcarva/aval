@@ -11,6 +11,9 @@ const els = {
   stochasticInput: document.getElementById("stochasticInput"),
   runButton: document.getElementById("runButton"),
   reportButton: document.getElementById("reportButton"),
+  leaderboardButton: document.getElementById("leaderboardButton"),
+  leaderboardRows: document.getElementById("leaderboardRows"),
+  leaderboardMeta: document.getElementById("leaderboardMeta"),
   statusText: document.getElementById("statusText"),
   manualPanel: document.getElementById("manualPanel"),
   manualScenarioSelect: document.getElementById("manualScenarioSelect"),
@@ -50,6 +53,7 @@ function bindEvents() {
   els.manualScenarioSelect.addEventListener("change", loadManualScenario);
   els.runButton.addEventListener("click", runEvaluation);
   els.reportButton.addEventListener("click", generateReport);
+  els.leaderboardButton.addEventListener("click", runLeaderboard);
   els.episodeSelect.addEventListener("change", renderSelectedEpisode);
 }
 
@@ -182,6 +186,62 @@ async function generateReport() {
   } finally {
     setBusy(false);
   }
+}
+
+async function runLeaderboard() {
+  setBusy(true);
+  try {
+    const seeds = parseSeeds();
+    const scenarioIds = selectedScenarioIds();
+    const board = await fetchJson("/api/leaderboard", {
+      method: "POST",
+      body: JSON.stringify({
+        seeds,
+        scenario_ids: scenarioIds,
+        stochastic: els.stochasticInput.checked,
+        scenario_rng_seed: 0,
+        include_heuristic_llm: true,
+      }),
+    });
+    renderLeaderboard(board);
+    setStatus("Leaderboard atualizado.");
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function renderLeaderboard(board) {
+  const entries = board.entries || [];
+  els.leaderboardMeta.textContent = `${entries.length} agentes | seeds ${(board.seeds || []).join(", ")}`;
+  if (!entries.length) {
+    els.leaderboardRows.innerHTML = '<tr><td colspan="9">Sem agentes avaliados.</td></tr>';
+    return;
+  }
+  els.leaderboardRows.innerHTML = entries
+    .map(
+      (entry) => `
+      <tr${entry.rank === 1 ? ' class="leader"' : ""}>
+        <td>${entry.rank}</td>
+        <td>${escapeHtml(entry.label || entry.name)}</td>
+        <td>${fmtNum(entry.aval_score)}</td>
+        <td>${escapeHtml(entry.grade || "-")}</td>
+        <td>${badge(verdictStatus(entry.verdict))} ${escapeHtml(entry.verdict || "")}</td>
+        <td>${fmtPct(entry.survival_rate)}</td>
+        <td>${fmtPct(entry.mean_price_efficiency)}</td>
+        <td>${fmtNum(entry.mean_structural_r_squared)}</td>
+        <td>${fmtMoney(entry.total_profit)}</td>
+      </tr>
+    `
+    )
+    .join("");
+}
+
+function verdictStatus(verdict) {
+  if (verdict === "APROVADO") return "pass";
+  if (verdict === "REPROVADO") return "fail";
+  return "unknown";
 }
 
 function renderBatch(batch) {
@@ -426,6 +486,7 @@ function escapeHtml(value) {
 function setBusy(busy) {
   els.runButton.disabled = busy;
   els.reportButton.disabled = busy;
+  els.leaderboardButton.disabled = busy;
 }
 
 function setStatus(message, isError = false) {

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVAL Leaderboard</title>
+  <style>
+    :root { color-scheme: light; --bg:#fffcf0; --bg-subtle:#f2f0e5; --ink:#100f0f;
+      --muted:#6f6e69; --line:#dad8ce; --panel:#fffcf0; --panel-strong:#f9f6ea;
+      --good:#66800b; --bad:#af3029; --warn:#ad8301; }
+    body { margin:0; background:linear-gradient(180deg,var(--bg-subtle) 0,var(--bg) 260px),var(--bg);
+      color:var(--ink); font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+    header { background:#100f0f; color:#fffcf0; padding:28px 32px; }
+    h1 { margin:0; font-size:28px; }
+    .subtitle { margin-top:8px; color:#cecdc3; }
+    main { max-width:1100px; margin:0 auto; padding:28px 24px 48px; }
+    table { width:100%; border-collapse:collapse; background:var(--panel);
+      border:1px solid var(--line); border-radius:8px; overflow:hidden;
+      box-shadow:0 12px 28px rgba(16,15,15,0.06); }
+    th,td { border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; }
+    th { background:var(--panel-strong); color:var(--muted); font-size:12px; text-transform:uppercase; }
+    tr:last-child td { border-bottom:0; }
+    .rank { font-weight:800; font-size:16px; }
+    .leader td { background:#f9f6ea; }
+    .badge { display:inline-block; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:800; white-space:nowrap; }
+    .v-aprovado { background:#ecf2d6; color:var(--good); }
+    .v-ressalva { background:#f7edcf; color:var(--warn); }
+    .v-reprovado { background:#f6e3df; color:var(--bad); }
+    details { margin-top:20px; }
+    pre { max-height:320px; overflow:auto; background:#100f0f; color:#cecdc3;
+      padding:12px; border-radius:8px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AVAL Leaderboard</h1>
+    <div class="subtitle">Ranqueado por competencia estrutural, nao por lucro. Seeds: 1, 2, 3 | Cenarios: buybye_autonomous | Gerado em 2026-06-25 23:19 UTC.</div>
+  </header>
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Agente</th><th>AVAL Score</th><th>Grade</th><th>Veredito</th>
+          <th>Sobreviv&ecirc;ncia</th><th>Efici&ecirc;ncia</th><th>Recup. (R2)</th><th>Lucro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="leader"><td class="rank">1</td><td>OracleAgent (otimo teorico)</td><td>99.00</td><td>A+</td><td><span class="badge v-aprovado">APROVADO</span></td><td>100.0%</td><td>100.0%</td><td>1.00</td><td>49,944.87</td></tr>
+<tr><td class="rank">2</td><td>NaiveAgent (demo ingenuo)</td><td>87.10</td><td>A-</td><td><span class="badge v-aprovado">APROVADO</span></td><td>100.0%</td><td>96.0%</td><td>1.00</td><td>40,887.00</td></tr>
+<tr><td class="rank">3</td><td>Random (volatil)</td><td>59.80</td><td>C-</td><td><span class="badge v-reprovado">REPROVADO</span></td><td>100.0%</td><td>57.5%</td><td>0.60</td><td>10,729.00</td></tr>
+<tr><td class="rank">4</td><td>FixedMarkup (cost-plus)</td><td>54.40</td><td>D</td><td><span class="badge v-reprovado">REPROVADO</span></td><td>100.0%</td><td>50.3%</td><td>0.00</td><td>18,325.98</td></tr>
+<tr><td class="rank">5</td><td>LLM heuristico (contrato JSON)</td><td>52.10</td><td>D</td><td><span class="badge v-reprovado">REPROVADO</span></td><td>100.0%</td><td>58.0%</td><td>0.18</td><td>4,762.80</td></tr>
+      </tbody>
+    </table>
+    <details>
+      <summary>Dados estruturados</summary>
+      <pre>{
+  &quot;seeds&quot;: [
+    1,
+    2,
+    3
+  ],
+  &quot;scenario_ids&quot;: [
+    &quot;buybye_autonomous&quot;
+  ],
+  &quot;stochastic&quot;: false,
+  &quot;scenario_rng_seed&quot;: 0,
+  &quot;entries&quot;: [
+    {
+      &quot;name&quot;: &quot;oracle&quot;,
+      &quot;label&quot;: &quot;OracleAgent (otimo teorico)&quot;,
+      &quot;aval_score&quot;: 99.0,
+      &quot;grade&quot;: &quot;A+&quot;,
+      &quot;verdict&quot;: &quot;APROVADO&quot;,
+      &quot;survival_rate&quot;: 1.0,
+      &quot;mean_price_efficiency&quot;: 1.0,
+      &quot;mean_structural_r_squared&quot;: 1.0,
+      &quot;total_profit&quot;: 49944.86947966988,
+      &quot;episodes&quot;: 3,
+      &quot;rank&quot;: 1
+    },
+    {
+      &quot;name&quot;: &quot;naive&quot;,
+      &quot;label&quot;: &quot;NaiveAgent (demo ingenuo)&quot;,
+      &quot;aval_score&quot;: 87.1,
+      &quot;grade&quot;: &quot;A-&quot;,
+      &quot;verdict&quot;: &quot;APROVADO&quot;,
+      &quot;survival_rate&quot;: 1.0,
+      &quot;mean_price_efficiency&quot;: 0.9603254157123614,
+      &quot;mean_structural_r_squared&quot;: 0.998428398004828,
+      &quot;total_profit&quot;: 40886.999999999985,
+      &quot;episodes&quot;: 3,
+      &quot;rank&quot;: 2
+    },
+    {
+      &quot;name&quot;: &quot;random&quot;,
+      &quot;label&quot;: &quot;Random (volatil)&quot;,
+      &quot;aval_score&quot;: 59.8,
+      &quot;grade&quot;: &quot;C-&quot;,
+      &quot;verdict&quot;: &quot;REPROVADO&quot;,
+      &quot;survival_rate&quot;: 1.0,
+      &quot;mean_price_efficiency&quot;: 0.5754669349944499,
+      &quot;mean_structural_r_squared&quot;: 0.5990636250557386,
+      &quot;total_profit&quot;: 10728.99826838644,
+      &quot;episodes&quot;: 3,
+      &quot;rank&quot;: 3
+    },
+    {
+      &quot;name&quot;: &quot;fixed_markup&quot;,
+      &quot;label&quot;: &quot;FixedMarkup (cost-plus)&quot;,
+      &quot;aval_score&quot;: 54.4,
+      &quot;grade&quot;: &quot;D&quot;,
+      &quot;verdict&quot;: &quot;REPROVADO&quot;,
+      &quot;survival_rate&quot;: 1.0,
+      &quot;mean_price_efficiency&quot;: 0.5031229654150265,
+      &quot;mean_structural_r_squared&quot;: 0.0,
+      &quot;total_profit&quot;: 18325.98,
+      &quot;episodes&quot;: 3,
+      &quot;rank&quot;: 4
+    },
+    {
+      &quot;name&quot;: &quot;heuristic_llm&quot;,
+      &quot;label&quot;: &quot;LLM heuristico (contrato JSON)&quot;,
+      &quot;aval_score&quot;: 52.1,
+      &quot;grade&quot;: &quot;D&quot;,
+      &quot;verdict&quot;: &quot;REPROVADO&quot;,
+      &quot;survival_rate&quot;: 1.0,
+      &quot;mean_price_efficiency&quot;: 0.5798947841431542,
+      &quot;mean_structural_r_squared&quot;: 0.18393200606624335,
+      &quot;total_profit&quot;: 4762.799999999999,
+      &quot;episodes&quot;: 3,
+      &quot;rank&quot;: 5
+    }
+  ]
+}</pre>
+    </details>
+  </main>
+</body>
+</html>

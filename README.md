@@ -25,6 +25,17 @@ only one prices and stocks near the optimum. Baseline scores are illustrative.
 
 ## Baseline agents
 
+### Leaderboard
+
+`leaderboard.py` ranks the whole roster by AVAL Score, not profit. Every agent
+faces the same seeds and the same scenario assignment, so demand realizations are
+identical across the board (apples-to-apples). Run it standalone with
+`python leaderboard.py` (prints the board and writes `aval_leaderboard.html`), or
+via `POST /api/leaderboard`. Profit and competence diverge: an agent can out-earn
+a rival and still rank below it because its structural recovery (R^2) collapses.
+
+### Baseline agents
+
 - `OracleAgent`: closed-form monopoly price + Newsvendor Q*. The A-grade reference.
 - `NaiveAgent`: weak demo policy. Fails at least one structural diagnostic.
 - `FixedMarkupAgent`: cost-plus human baseline. Survives but its structural R^2
@@ -66,8 +77,9 @@ structural diagnostic, so the first run shows why AVAL exists. Switch to
 
 ```powershell
 python -m unittest discover -s tests -p "test_*.py"
-python -m py_compile catalog.py env.py metrics.py agents.py runner.py scoring.py report.py api.py app_server.py
+python -m py_compile catalog.py env.py metrics.py agents.py runner.py scoring.py leaderboard.py report.py api.py app_server.py
 python runner.py
+python leaderboard.py
 python app_server.py
 ```
 
@@ -77,8 +89,10 @@ python app_server.py
 - `GET /api/scenarios/{scenario_id}`
 - `POST /api/run`
 - `POST /api/manual-run`
+- `POST /api/leaderboard`
 - `POST /api/report`
 - `GET /aval_parecer.html`
+- `GET /aval_leaderboard.html`
 
 ## Dependency Policy
 

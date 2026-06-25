@@ -12,7 +12,12 @@ import numpy as np
 from agents import LLMAgent
 from catalog import SCENARIOS, ScenarioSpec, get_scenario
 from env import RetailEnv
-from report import DEFAULT_REPORT_PATH, write_html_report
+from leaderboard import DEFAULT_SEEDS, default_roster, run_leaderboard
+from report import (
+    DEFAULT_REPORT_PATH,
+    write_html_report,
+    write_leaderboard_report,
+)
 from runner import (
     FixedMarkupAgent,
     NaiveAgent,
@@ -23,6 +28,7 @@ from runner import (
 
 MAX_SEEDS = 200
 MAX_SCENARIOS = 50
+LEADERBOARD_REPORT_NAME = "aval_leaderboard.html"
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -39,6 +45,7 @@ except ImportError as exc:  # pragma: no cover - exercised only without web deps
 ROOT_DIR = Path(__file__).resolve().parent
 WEB_DIR = ROOT_DIR / "web"
 REPORT_PATH = ROOT_DIR / DEFAULT_REPORT_PATH
+LEADERBOARD_PATH = ROOT_DIR / LEADERBOARD_REPORT_NAME
 
 
 class RunRequest(BaseModel):
@@ -64,6 +71,15 @@ class ManualRunRequest(BaseModel):
 
 class ReportRequest(BaseModel):
     batch: dict[str, Any] | None = None
+
+
+class LeaderboardRequest(BaseModel):
+    seeds: list[int] = Field(default_factory=lambda: list(DEFAULT_SEEDS))
+    scenario_ids: list[str] | None = Field(default=None)
+    stochastic: bool = True
+    scenario_rng_seed: int = 0
+    include_heuristic_llm: bool = True
+    generate_report: bool = False
 
 
 class FixedActionAgent:
@@ -235,6 +251,36 @@ def generate_report(request: ReportRequest) -> dict[str, Any]:
         batch = request.batch
     path = write_html_report(batch, REPORT_PATH)
     return {"report_path": path, "url": "/aval_parecer.html"}
+
+
+@app.post("/api/leaderboard")
+def run_leaderboard_endpoint(request: LeaderboardRequest) -> dict[str, Any]:
+    _validate_seeds(request.seeds)
+    scenario_ids = _validate_scenario_ids(request.scenario_ids)
+    roster = default_roster()
+    if request.include_heuristic_llm:
+        roster["heuristic_llm"] = HeuristicLLMAgent
+    board = run_leaderboard(
+        roster=roster,
+        seeds=request.seeds,
+        scenario_ids=scenario_ids,
+        stochastic=request.stochastic,
+        scenario_rng_seed=request.scenario_rng_seed,
+    )
+    if request.generate_report:
+        board["report_path"] = write_leaderboard_report(board, LEADERBOARD_PATH)
+        board["report_url"] = "/aval_leaderboard.html"
+    return _json_safe(board)
+
+
+@app.get("/aval_leaderboard.html")
+def leaderboard_file() -> FileResponse:
+    if not LEADERBOARD_PATH.exists():
+        roster = default_roster()
+        roster["heuristic_llm"] = HeuristicLLMAgent
+        board = run_leaderboard(roster=roster, stochastic=True)
+        write_leaderboard_report(board, LEADERBOARD_PATH)
+    return FileResponse(LEADERBOARD_PATH, media_type="text/html")
 
 
 @app.get("/aval_parecer.html")

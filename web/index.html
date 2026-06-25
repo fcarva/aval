@@ -56,6 +56,9 @@
           <button id="runButton" type="button">Rodar avaliacao</button>
           <button id="reportButton" type="button" class="secondary">Gerar parecer</button>
         </div>
+        <div class="button-row">
+          <button id="leaderboardButton" type="button" class="secondary">Rodar leaderboard</button>
+        </div>
         <p id="statusText" class="status">Carregando catalogo...</p>
       </section>
 
@@ -102,6 +105,33 @@
           <span>Lucro simulado</span>
           <strong id="kpiProfit">-</strong>
         </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Leaderboard</h2>
+          <span id="leaderboardMeta" class="muted">Ranqueado por competencia, nao por lucro</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Agente</th>
+                <th>Score</th>
+                <th>Grade</th>
+                <th>Veredito</th>
+                <th>Sobrevivencia</th>
+                <th>Eficiencia</th>
+                <th>Recup. R2</th>
+                <th>Lucro</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardRows">
+              <tr><td colspan="9">Rode o leaderboard para comparar os agentes.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section class="panel">

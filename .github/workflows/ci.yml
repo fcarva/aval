@@ -16,13 +16,13 @@ jobs:
       - name: Install core dependencies
         run: python -m pip install -r requirements.txt
       - name: Compile modules
-        run: python -m py_compile catalog.py env.py metrics.py agents.py runner.py scoring.py report.py app_server.py
+        run: python -m py_compile catalog.py env.py metrics.py agents.py runner.py scoring.py leaderboard.py report.py app_server.py
       - name: Run core tests
         run: >-
           python -m unittest
           tests.test_catalog tests.test_env tests.test_metrics
           tests.test_agents tests.test_scoring tests.test_runner
-          tests.test_report
+          tests.test_report tests.test_leaderboard
 
   web:
     name: web (full stack)

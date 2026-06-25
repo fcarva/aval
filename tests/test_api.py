@@ -120,6 +120,30 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["url"], "/aval_parecer.html")
 
+    def test_leaderboard_endpoint_ranks_agents(self) -> None:
+        response = self.client.post(
+            "/api/leaderboard",
+            json={
+                "seeds": [1, 2, 3],
+                "scenario_ids": ["buybye_autonomous"],
+                "stochastic": False,
+                "include_heuristic_llm": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entries = response.json()["entries"]
+        # Oracle leads; the heuristic LLM agent is included in the roster.
+        self.assertEqual(entries[0]["name"], "oracle")
+        self.assertIn("heuristic_llm", {entry["name"] for entry in entries})
+
+    def test_leaderboard_rejects_too_many_seeds(self) -> None:
+        response = self.client.post(
+            "/api/leaderboard", json={"seeds": list(range(201))}
+        )
+
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

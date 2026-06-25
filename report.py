@@ -443,6 +443,110 @@ def _to_float(value: Any) -> float | None:
     return number
 
 
+def write_leaderboard_report(
+    board: Mapping[str, Any], output_path: str | Path = "aval_leaderboard.html"
+) -> str:
+    path = Path(output_path)
+    path.write_text(render_leaderboard_html(board), encoding="utf-8")
+    return str(path)
+
+
+def render_leaderboard_html(board: Mapping[str, Any]) -> str:
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    entries = list(board.get("entries", []))
+    seeds = ", ".join(str(seed) for seed in board.get("seeds", []))
+    scenario_ids = board.get("scenario_ids") or ["todos"]
+    scenarios_text = ", ".join(str(item) for item in scenario_ids)
+    rows = _render_leaderboard_rows(entries)
+    raw_json = escape(json.dumps(_json_safe(board), ensure_ascii=True, indent=2))
+    return f"""<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVAL Leaderboard</title>
+  <style>
+    :root {{ color-scheme: light; --bg:#fffcf0; --bg-subtle:#f2f0e5; --ink:#100f0f;
+      --muted:#6f6e69; --line:#dad8ce; --panel:#fffcf0; --panel-strong:#f9f6ea;
+      --good:#66800b; --bad:#af3029; --warn:#ad8301; }}
+    body {{ margin:0; background:linear-gradient(180deg,var(--bg-subtle) 0,var(--bg) 260px),var(--bg);
+      color:var(--ink); font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }}
+    header {{ background:#100f0f; color:#fffcf0; padding:28px 32px; }}
+    h1 {{ margin:0; font-size:28px; }}
+    .subtitle {{ margin-top:8px; color:#cecdc3; }}
+    main {{ max-width:1100px; margin:0 auto; padding:28px 24px 48px; }}
+    table {{ width:100%; border-collapse:collapse; background:var(--panel);
+      border:1px solid var(--line); border-radius:8px; overflow:hidden;
+      box-shadow:0 12px 28px rgba(16,15,15,0.06); }}
+    th,td {{ border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; }}
+    th {{ background:var(--panel-strong); color:var(--muted); font-size:12px; text-transform:uppercase; }}
+    tr:last-child td {{ border-bottom:0; }}
+    .rank {{ font-weight:800; font-size:16px; }}
+    .leader td {{ background:#f9f6ea; }}
+    .badge {{ display:inline-block; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:800; white-space:nowrap; }}
+    .v-aprovado {{ background:#ecf2d6; color:var(--good); }}
+    .v-ressalva {{ background:#f7edcf; color:var(--warn); }}
+    .v-reprovado {{ background:#f6e3df; color:var(--bad); }}
+    details {{ margin-top:20px; }}
+    pre {{ max-height:320px; overflow:auto; background:#100f0f; color:#cecdc3;
+      padding:12px; border-radius:8px; font-size:12px; }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AVAL Leaderboard</h1>
+    <div class="subtitle">Ranqueado por competencia estrutural, nao por lucro. Seeds: {escape(seeds)} | Cenarios: {escape(scenarios_text)} | Gerado em {generated_at}.</div>
+  </header>
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Agente</th><th>AVAL Score</th><th>Grade</th><th>Veredito</th>
+          <th>Sobreviv&ecirc;ncia</th><th>Efici&ecirc;ncia</th><th>Recup. (R2)</th><th>Lucro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows}
+      </tbody>
+    </table>
+    <details>
+      <summary>Dados estruturados</summary>
+      <pre>{raw_json}</pre>
+    </details>
+  </main>
+</body>
+</html>
+"""
+
+
+def _render_leaderboard_rows(entries: Sequence[Mapping[str, Any]]) -> str:
+    if not entries:
+        return '<tr><td colspan="9">Sem agentes avaliados.</td></tr>'
+    rows: list[str] = []
+    for entry in entries:
+        verdict = str(entry.get("verdict", "")).upper()
+        verdict_class = {
+            "APROVADO": "v-aprovado",
+            "RESSALVA": "v-ressalva",
+            "REPROVADO": "v-reprovado",
+        }.get(verdict, "v-ressalva")
+        leader = " class=\"leader\"" if entry.get("rank") == 1 else ""
+        rows.append(
+            f"<tr{leader}>"
+            f'<td class="rank">{escape(str(entry.get("rank", "")))}</td>'
+            f"<td>{escape(str(entry.get('label', entry.get('name', ''))))}</td>"
+            f"<td>{escape(_fmt_num(entry.get('aval_score')))}</td>"
+            f"<td>{escape(str(entry.get('grade', 'n/a')))}</td>"
+            f'<td><span class="badge {verdict_class}">{escape(verdict)}</span></td>'
+            f"<td>{escape(_fmt_pct(entry.get('survival_rate')))}</td>"
+            f"<td>{escape(_fmt_pct(entry.get('mean_price_efficiency')))}</td>"
+            f"<td>{escape(_fmt_num(entry.get('mean_structural_r_squared')))}</td>"
+            f"<td>{escape(_fmt_money(entry.get('total_profit')))}</td>"
+            "</tr>"
+        )
+    return "\n".join(rows)
+
+
 def _json_safe(value: Any) -> Any:
     if isinstance(value, Mapping):
         return {str(key): _json_safe(item) for key, item in value.items()}
