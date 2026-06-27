@@ -15,12 +15,17 @@ const els = {
   manualPanel: document.getElementById("manualPanel"),
   manualScenarioSelect: document.getElementById("manualScenarioSelect"),
   manualEditor: document.getElementById("manualEditor"),
-  kpiScore: document.getElementById("kpiScore"),
-  kpiVerdict: document.getElementById("kpiVerdict"),
+  heroDistance: document.getElementById("heroDistance"),
+  heroScore: document.getElementById("heroScore"),
+  heroGrade: document.getElementById("heroGrade"),
+  heroVerdict: document.getElementById("heroVerdict"),
+  gaugeFill: document.getElementById("gaugeFill"),
+  gaugeProximity: document.getElementById("gaugeProximity"),
+  pillarPriceGap: document.getElementById("pillarPriceGap"),
+  pillarOrderGap: document.getElementById("pillarOrderGap"),
+  pillarEfficiency: document.getElementById("pillarEfficiency"),
   kpiSurvival: document.getElementById("kpiSurvival"),
-  kpiEfficiency: document.getElementById("kpiEfficiency"),
-  kpiPriceGap: document.getElementById("kpiPriceGap"),
-  kpiOrderGap: document.getElementById("kpiOrderGap"),
+  kpiStructural: document.getElementById("kpiStructural"),
   kpiProfit: document.getElementById("kpiProfit"),
   batchMeta: document.getElementById("batchMeta"),
   diagnosticGrid: document.getElementById("diagnosticGrid"),
@@ -36,6 +41,10 @@ const scenarioNames = {
   d2c_fashion: "WearClio/Disturb - moda D2C",
   baco_premium: "Seja Baco - bebidas premium",
 };
+
+// A relative price gap at or above this magnitude fills a per-offer distance bar
+// completely. 50% off the oracle price is already a gross miss.
+const PRICE_GAP_FULL_SCALE = 0.5;
 
 async function init() {
   bindEvents();
@@ -186,13 +195,10 @@ async function generateReport() {
 
 function renderBatch(batch) {
   const summary = batch.summary || {};
-  const grade = summary.grade ? ` (${summary.grade})` : "";
-  setKpi(els.kpiScore, `${fmtNum(summary.mean_aval_score)}${grade}`, scoreClass(summary.mean_aval_score));
-  setKpi(els.kpiVerdict, summary.verdict || "-", verdictClass(summary.verdict));
+  renderHero(summary);
+
   setKpi(els.kpiSurvival, fmtPct(summary.survival_rate), efficiencyClass(summary.survival_rate));
-  setKpi(els.kpiEfficiency, fmtPct(summary.mean_price_efficiency), efficiencyClass(summary.mean_price_efficiency));
-  setKpi(els.kpiPriceGap, fmtPct(summary.mean_abs_relative_price_gap), gapClass(summary.mean_abs_relative_price_gap));
-  setKpi(els.kpiOrderGap, fmtNum(summary.mean_abs_order_gap), orderGapClass(summary.mean_abs_order_gap));
+  setKpi(els.kpiStructural, fmtPct(summary.mean_structural_r_squared), efficiencyClass(summary.mean_structural_r_squared));
   els.kpiProfit.textContent = fmtMoney(summary.total_profit);
   els.batchMeta.textContent = `${batch.agent_name} | ${batch.episodes.length} episodios | ${batch.seeds.join(", ")}`;
 
@@ -200,6 +206,31 @@ function renderBatch(batch) {
   renderEpisodeRows(batch);
   populateEpisodeSelect(batch);
   renderSelectedEpisode();
+}
+
+function renderHero(summary) {
+  const distance = distanceToOptimal(summary.mean_price_efficiency);
+  const proximity = proximityToOptimal(summary.mean_price_efficiency);
+  const distClass = distanceClass(distance);
+
+  setKpi(els.heroDistance, fmtPct(distance), distClass);
+
+  els.gaugeFill.style.width = `${(Number.isFinite(proximity) ? proximity : 0) * 100}%`;
+  els.gaugeFill.classList.remove("good", "warn", "bad");
+  if (distClass) els.gaugeFill.classList.add(distClass);
+  els.gaugeProximity.textContent = fmtPct(proximity);
+
+  const grade = summary.grade ? `${summary.grade}` : "";
+  els.heroScore.textContent = fmtNum(summary.mean_aval_score);
+  els.heroScore.classList.remove("good", "warn", "bad");
+  const sClass = scoreClass(summary.mean_aval_score);
+  if (sClass) els.heroScore.classList.add(sClass);
+  els.heroGrade.textContent = grade;
+  setKpi(els.heroVerdict, summary.verdict || "-", verdictClass(summary.verdict));
+
+  setKpi(els.pillarPriceGap, fmtPct(summary.mean_abs_relative_price_gap), gapClass(summary.mean_abs_relative_price_gap));
+  setKpi(els.pillarOrderGap, fmtNum(summary.mean_abs_order_gap), orderGapClass(summary.mean_abs_order_gap));
+  setKpi(els.pillarEfficiency, fmtPct(summary.mean_price_efficiency), efficiencyClass(summary.mean_price_efficiency));
 }
 
 function renderDiagnostics(batch) {
@@ -223,14 +254,15 @@ function renderEpisodeRows(batch) {
   const rows = batch.episodes.map((episode) => {
     const summary = episode.summary;
     const diagnostic = summary.diagnostic || {};
+    const distance = distanceToOptimal(summary.mean_price_efficiency);
     return `
       <tr>
         <td>${episode.seed}</td>
         <td>${escapeHtml(labelForScenario(episode.scenario_id))}</td>
         <td>${summary.days_run}</td>
+        <td class="lead-col"><span class="dist-tag ${distanceClass(distance)}">${fmtPct(distance)}</span></td>
         <td>${fmtNum(summary.aval_score)}</td>
         <td>${escapeHtml(summary.grade || "-")}</td>
-        <td>${fmtPct(summary.mean_price_efficiency)}</td>
         <td>${fmtPct(summary.mean_abs_relative_price_gap)}</td>
         <td>${fmtNum(summary.mean_abs_order_gap)}</td>
         <td>${fmtMoney(summary.total_profit)}</td>
@@ -271,7 +303,7 @@ function renderSelectedEpisode() {
           <td>${escapeHtml(offerId)}</td>
           <td>${fmtMoney(step.prices[offerIndex])}</td>
           <td>${fmtMoney(step.oracle_prices[offerIndex])}</td>
-          <td>${fmtPct(step.relative_price_gap[offerIndex])}</td>
+          <td class="lead-col">${distanceBar(step.relative_price_gap[offerIndex])}</td>
           <td>${skuIndex >= 0 ? fmtNum(step.orders[skuIndex]) : "-"}</td>
           <td>${skuIndex >= 0 ? fmtNum(step.oracle_orders[skuIndex]) : "-"}</td>
           <td>${fmtNum(step.lost_sales[offerIndex])}</td>
@@ -339,6 +371,37 @@ function selectDiagnostic(diagnostics) {
   return diagnostics.find((item) => item.status === "fail") || diagnostics[0] || {};
 }
 
+// Distance to the theoretical optimum, derived from profit efficiency in [0, 1].
+// efficiency = agent profit / oracle profit, so 1 - efficiency is the share of the
+// optimum left on the table. Clamped at 0 because in-sample noise can push a single
+// run marginally past the oracle.
+function distanceToOptimal(efficiency) {
+  const number = Number(efficiency);
+  if (!Number.isFinite(number)) return NaN;
+  return Math.max(0, 1 - number);
+}
+
+function proximityToOptimal(efficiency) {
+  const number = Number(efficiency);
+  if (!Number.isFinite(number)) return NaN;
+  return Math.min(1, Math.max(0, number));
+}
+
+function distanceBar(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  const magnitude = Math.abs(number);
+  const fill = Math.min(1, magnitude / PRICE_GAP_FULL_SCALE) * 100;
+  const cls = gapClass(magnitude);
+  const sign = number > 0 ? "+" : "";
+  return `
+    <span class="dist-cell">
+      <span class="dist-bar"><span class="dist-bar-fill ${cls}" style="width:${fill}%"></span></span>
+      <span class="dist-bar-label ${cls}">${sign}${(number * 100).toFixed(1)}%</span>
+    </span>
+  `;
+}
+
 function setKpi(element, text, className) {
   element.textContent = text;
   element.classList.remove("good", "warn", "bad");
@@ -350,6 +413,15 @@ function efficiencyClass(value) {
   if (!Number.isFinite(number)) return "";
   if (number >= 0.95) return "good";
   if (number >= 0.8) return "warn";
+  return "bad";
+}
+
+// Mirror of efficiencyClass for the distance framing: small distance is good.
+function distanceClass(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  if (number <= 0.05) return "good";
+  if (number <= 0.2) return "warn";
   return "bad";
 }
 
