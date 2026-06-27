@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AVAL MVP</title>
+  <title>AVAL · Quant Terminal</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="header-content">
       <div>
-        <h1>AVAL</h1>
-        <p>Agent Evaluation - Distancia para o Otimo Teorico</p>
+        <h1>AVAL <span class="terminal-tag">quant terminal</span></h1>
+        <p>Distância ao ótimo teórico (Oracle) como métrica central de avaliação</p>
       </div>
       <span class="header-badge">MVP</span>
     </div>
@@ -73,30 +73,62 @@
     </aside>
 
     <section class="workspace">
-      <section class="kpi-grid" aria-label="Indicadores">
-        <article class="kpi">
-          <span>AVAL Score</span>
-          <strong id="kpiScore">-</strong>
-        </article>
-        <article class="kpi">
-          <span>Veredito</span>
-          <strong id="kpiVerdict">-</strong>
-        </article>
+      <section class="panel hero" aria-label="Distancia ao otimo">
+        <div class="hero-head">
+          <div>
+            <span class="hero-kicker">Metrica central</span>
+            <h2>Distancia ao Otimo</h2>
+            <p class="hero-sub">Gap de lucro frente ao otimo teorico (Oracle). Quanto menor, mais perto do otimo.</p>
+          </div>
+          <div class="hero-cert">
+            <span id="heroVerdict" class="verdict-chip">-</span>
+            <span class="hero-score">
+              <strong id="heroScore">-</strong>
+              <small id="heroGrade"></small>
+            </span>
+            <span class="hero-score-label">AVAL Score</span>
+          </div>
+        </div>
+
+        <div class="hero-metric">
+          <strong id="heroDistance">-</strong>
+          <span class="hero-unit">do otimo</span>
+        </div>
+
+        <div class="gauge-row">
+          <span class="gauge-end">Longe</span>
+          <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+          <span class="gauge-end">Otimo</span>
+        </div>
+        <p class="gauge-caption">Proximidade ao otimo: <strong id="gaugeProximity">-</strong></p>
+
+        <div class="hero-pillars">
+          <article class="pillar">
+            <span>Gap de preco</span>
+            <strong id="pillarPriceGap">-</strong>
+            <small>distancia media do preco otimo</small>
+          </article>
+          <article class="pillar">
+            <span>Gap de pedido</span>
+            <strong id="pillarOrderGap">-</strong>
+            <small>distancia media do Q* Newsvendor</small>
+          </article>
+          <article class="pillar">
+            <span>Captura do otimo</span>
+            <strong id="pillarEfficiency">-</strong>
+            <small>lucro realizado vs. otimo</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Indicadores de suporte">
         <article class="kpi">
           <span>Sobrevivencia</span>
           <strong id="kpiSurvival">-</strong>
         </article>
         <article class="kpi">
-          <span>Eficiencia media</span>
-          <strong id="kpiEfficiency">-</strong>
-        </article>
-        <article class="kpi">
-          <span>Gap preco</span>
-          <strong id="kpiPriceGap">-</strong>
-        </article>
-        <article class="kpi">
-          <span>Gap pedido</span>
-          <strong id="kpiOrderGap">-</strong>
+          <span>Recuperacao estrutural</span>
+          <strong id="kpiStructural">-</strong>
         </article>
         <article class="kpi">
           <span>Lucro simulado</span>
@@ -124,9 +156,9 @@
                 <th>Seed</th>
                 <th>Cenario</th>
                 <th>Dias</th>
+                <th class="lead-col">Dist. otimo</th>
                 <th>Score</th>
                 <th>Grade</th>
-                <th>Eficiencia</th>
                 <th>Gap preco</th>
                 <th>Gap pedido</th>
                 <th>Lucro</th>
@@ -153,7 +185,7 @@
                 <th>Oferta</th>
                 <th>Preco agente</th>
                 <th>Preco Oracle</th>
-                <th>Gap relativo</th>
+                <th class="lead-col">Distancia ao otimo</th>
                 <th>Pedido agente</th>
                 <th>Q* Oracle</th>
                 <th>Lost sales</th>

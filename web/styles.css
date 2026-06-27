@@ -120,6 +120,22 @@ select {
   letter-spacing: 0;
 }
 
+.terminal-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--panel-strong);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  vertical-align: middle;
+}
+
 .topbar p {
   margin: 2px 0 0;
   color: var(--muted);
@@ -381,7 +397,7 @@ button:disabled {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -514,6 +530,329 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hero: Distancia ao Otimo -------------------------------------------------- */
+
+.hero {
+  background:
+    radial-gradient(120% 120% at 0% 0%, var(--accent-soft) 0, transparent 55%),
+    color-mix(in srgb, var(--panel) 94%, var(--bg-subtle));
+  border-color: var(--line-strong);
+}
+
+.hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero-kicker {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 740;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-head h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 760;
+}
+
+.hero-sub {
+  margin: 4px 0 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hero-cert {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.verdict-chip {
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.verdict-chip.good {
+  color: var(--good);
+  background: var(--soft-good);
+  border-color: transparent;
+}
+
+.verdict-chip.warn {
+  color: var(--warn);
+  background: var(--soft-warn);
+  border-color: transparent;
+}
+
+.verdict-chip.bad {
+  color: var(--bad);
+  background: var(--soft-bad);
+  border-color: transparent;
+}
+
+.hero-score {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hero-score strong {
+  font-size: 22px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-score strong.good {
+  color: var(--good);
+}
+
+.hero-score strong.warn {
+  color: var(--warn);
+}
+
+.hero-score strong.bad {
+  color: var(--bad);
+}
+
+.hero-score small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.hero-score-label {
+  color: var(--faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hero-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.hero-metric strong {
+  font-size: 64px;
+  line-height: 1;
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.hero-metric strong.good {
+  color: var(--good);
+}
+
+.hero-metric strong.warn {
+  color: var(--warn);
+}
+
+.hero-metric strong.bad {
+  color: var(--bad);
+}
+
+.hero-unit {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gauge-end {
+  color: var(--faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.gauge {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+
+.gauge-fill.good {
+  background: var(--good);
+}
+
+.gauge-fill.warn {
+  background: var(--warn);
+}
+
+.gauge-fill.bad {
+  background: var(--bad);
+}
+
+.gauge-caption {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gauge-caption strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pillar {
+  display: grid;
+  gap: 3px;
+}
+
+.pillar span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pillar strong {
+  font-size: 22px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.pillar strong.good {
+  color: var(--good);
+}
+
+.pillar strong.warn {
+  color: var(--warn);
+}
+
+.pillar strong.bad {
+  color: var(--bad);
+}
+
+.pillar small {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+/* Distance markers inside tables ------------------------------------------- */
+
+.lead-col {
+  background: color-mix(in srgb, var(--accent-soft) 50%, transparent);
+}
+
+.dist-tag {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+
+.dist-tag.good {
+  color: var(--good);
+  background: var(--soft-good);
+}
+
+.dist-tag.warn {
+  color: var(--warn);
+  background: var(--soft-warn);
+}
+
+.dist-tag.bad {
+  color: var(--bad);
+  background: var(--soft-bad);
+}
+
+.dist-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.dist-bar {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  overflow: hidden;
+}
+
+.dist-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.dist-bar-fill.good {
+  background: var(--good);
+}
+
+.dist-bar-fill.warn {
+  background: var(--warn);
+}
+
+.dist-bar-fill.bad {
+  background: var(--bad);
+}
+
+.dist-bar-label {
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dist-bar-label.good {
+  color: var(--good);
+}
+
+.dist-bar-label.warn {
+  color: var(--warn);
+}
+
+.dist-bar-label.bad {
+  color: var(--bad);
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
@@ -546,6 +885,23 @@ td {
   }
 
   .manual-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-head {
+    flex-direction: column;
+  }
+
+  .hero-cert {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .hero-metric strong {
+    font-size: 48px;
+  }
+
+  .hero-pillars {
     grid-template-columns: 1fr;
   }
 }
